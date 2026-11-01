@@ -5,9 +5,10 @@
 <h1 align="center">Kage Scribe</h1>
 
 <p align="center">
-  A Chrome extension that saves your chats from <b>isekaizero.ai</b> and
-  <b>kagesekai.ai</b> while you browse, and exports each one as a complete
-  transcript in <b>Word, Excel, CSV or JSON</b>.
+  A <b>free</b> and <b>private</b> Chrome extension that saves your chats from
+  <b>isekaizero.ai</b> and <b>kagesekai.ai</b> while you browse, and exports
+  each one as a complete transcript in <b>Word, Excel, CSV or JSON</b>.
+  Your chats never leave your computer.
 </p>
 
 ![Your chats](docs/screenshots/panel-chats.png)
