@@ -1,0 +1,69 @@
+/* Kage Scribe — popup quick controls, in the panel's night-ink theme. */
+
+:root {
+  color-scheme: dark;
+  --bg: #11131a;
+  --surface-2: #212532;
+  --text: #e9ebf1;
+  --muted: #9aa1b2;
+  --line-strong: #3a4152;
+  --accent: #ff7a59;
+  --accent-hover: #ff9474;
+  --on-accent: #11131a;
+  --ok: #4ade80;
+  --bad: #f87171;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  width: 320px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 var(--sans);
+  padding: 16px;
+}
+.muted { color: var(--muted); }
+.foot { font-size: 12px; margin: 12px 0 0; }
+
+header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+header h1 { font: 650 15px/1.2 var(--sans); margin: 0; flex: 1; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
+  background: var(--surface-2);
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.dot.off { background: var(--muted); }
+.dot.bad { background: var(--bad); }
+.health { margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--bad); border-radius: 8px; color: var(--bad); }
+.last-saved { font-size: 12px; margin: -8px 0 14px; }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+
+.switch { position: relative; width: 40px; height: 22px; display: inline-block; flex: none; }
+.switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.slider { position: absolute; inset: 0; background: var(--line-strong); border-radius: 22px; transition: .2s; pointer-events: none; }
+.slider::before {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+  background: var(--text); border-radius: 50%; transition: .2s;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(18px); background: var(--on-accent); }
+.switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stats { font-size: 14px; margin-bottom: 14px; }
+.stats b { color: var(--accent); }
+
+button.primary {
+  width: 100%;
+  background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent);
+  border-radius: 8px; padding: 10px; font: 650 14px var(--sans); cursor: pointer;
+}
+button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slider, .slider::before { transition: none; }
+}

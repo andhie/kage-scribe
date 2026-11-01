@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <h1>Kage Scribe</h1>
+  <span class="status-pill"><span class="dot" id="liveDot"></span><span id="statusText">Capturing</span></span>
+  <label class="switch" title="Turn capture on or off">
+    <input type="checkbox" id="tglEnabled" aria-label="Turn capture on or off">
+    <span class="slider"></span>
+  </label>
+</header>
+
+<p id="health" class="health" hidden>
+  <span>Kage Scribe could not read the last chat it saw.</span>
+  <button id="btnUpdate" class="link" hidden>Get the latest version</button>
+</p>
+
+<div id="stats" class="stats"></div>
+<p id="lastSaved" class="muted last-saved"></p>
+
+<button id="btnOpen" class="primary">Open your chats</button>
+
+<p class="muted foot">Chats save while you browse isekaizero.ai and kagesekai.ai. Open the panel to export your chats. <span id="version"></span></p>
+
+<script src="popup.js"></script>
+</body>
+</html>

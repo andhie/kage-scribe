@@ -1,0 +1,15 @@
+{
+  "name": "kage-scribe",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Save your chats from isekaizero.ai and kagesekai.ai, and download them as Word, Excel, CSV or JSON.",
+  "scripts": {
+    "test": "node tests/run-all.mjs",
+    "icons": "node tools/make_icons.mjs",
+    "screenshots": "node tools/screenshots/shoot.mjs",
+    "release": "mkdir -p dist && v=$(node -p \"require('./extension/manifest.json').version\") && git archive --format=zip -o dist/kage-scribe-$v.zip HEAD:extension"
+  },
+  "devDependencies": {
+    "exceljs": "^4.4.0"
+  }
+}

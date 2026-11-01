@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kage Scribe</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Kage Scribe</h1>
+  <span class="status-pill" id="statusPill"><span class="dot" id="liveDot"></span><span id="liveLabel">Capturing</span></span>
+  <nav class="seg viewnav" aria-label="Views">
+    <button data-view="simple" class="active" aria-pressed="true">Your chats</button>
+    <button data-view="advanced" aria-pressed="false">Advanced</button>
+  </nav>
+  <label class="switch" title="Turn capture on or off">
+    <input type="checkbox" id="tglEnabled" aria-label="Turn capture on or off">
+    <span class="slider"></span>
+  </label>
+</header>
+
+<!-- Simple view: the chat list and one-click exports. -->
+<main id="view-simple" class="view-simple">
+  <div class="page">
+    <div class="page-head">
+      <h2>Your chats</h2>
+      <p class="muted" id="simpleSummary"></p>
+    </div>
+    <div id="chatList" class="chat-list"></div>
+  </div>
+</main>
+
+<!-- Advanced view: message browser, developer tools, settings strip. -->
+<div id="view-advanced" class="advanced hidden">
+
+<nav class="tabs" aria-label="Advanced sections">
+  <button data-tab="merged" class="active" aria-pressed="true">Messages</button>
+  <button data-tab="captures" aria-pressed="false">Developer</button>
+</nav>
+
+<main>
+  <section id="view-merged" class="view">
+    <div class="toolbar">
+      <select id="selChat" aria-label="Chat"></select>
+      <select id="selRole" aria-label="Role">
+        <option value="all">All roles</option>
+        <option value="user">User</option>
+        <option value="assistant">Assistant</option>
+      </select>
+      <select id="selDir" aria-label="Order">
+        <option value="asc">Oldest first</option>
+        <option value="desc">Newest first</option>
+      </select>
+      <input id="inSearch" type="search" placeholder="Search messages…" aria-label="Search messages">
+      <span class="spacer"></span>
+      <button id="btnFetchAll" title="Load every page of this chat from the site">Reload full chat</button>
+      <button id="btnRemoveChat" class="link danger hidden" title="Remove this chat’s saved messages">Remove chat</button>
+    </div>
+    <div id="fetchStatus" class="fetch-status hidden" role="status"></div>
+    <div class="tbl-wrap">
+      <table class="msg-table">
+        <thead>
+          <tr><th>#</th><th>Role</th><th>Name</th><th>Time</th><th class="th-content">Content</th><th>Model</th><th>Tokens</th></tr>
+        </thead>
+        <tbody id="msgRows"></tbody>
+      </table>
+    </div>
+    <div class="table-foot">
+      <span class="muted" id="mergedFoot"></span>
+      <span class="spacer"></span>
+      <button class="exp primary" data-fmt="docx" title="Storybook: names, scene headers and a cover — for reading">Word</button>
+      <button class="exp" data-fmt="xlsx">Excel</button>
+      <button class="exp" data-fmt="csv">CSV</button>
+      <button class="exp" data-fmt="json">JSON</button>
+    </div>
+  </section>
+
+  <section id="view-captures" class="view hidden">
+    <details class="dev-settings">
+      <summary>Capture settings</summary>
+      <p id="patterns" class="muted patterns"></p>
+    </details>
+    <div class="dev-body">
+      <div class="req-col">
+        <div class="req-head">
+          <span class="muted" id="capCount"></span>
+          <span class="spacer"></span>
+          <button class="cap-exp small" data-fmt="csv">CSV</button>
+          <button class="cap-exp small" data-fmt="json">JSON</button>
+          <button class="cap-exp small" data-fmt="xlsx">Excel</button>
+          <button id="btnClearRaw" class="link danger small">Clear</button>
+        </div>
+        <div id="reqList" class="req-list"></div>
+      </div>
+      <div class="inspector">
+        <div class="insp-tabs">
+          <button data-i="pretty" class="active" aria-pressed="true">Pretty</button>
+          <button data-i="raw" aria-pressed="false">Raw</button>
+          <button data-i="request" aria-pressed="false">Request</button>
+          <span class="spacer"></span>
+          <button id="btnCopyBody" class="small">Copy body</button>
+        </div>
+        <div id="inspBody" class="insp-body"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="settings-strip">
+  <div id="stats" class="stats"></div>
+  <span class="spacer"></span>
+  <button id="btnClearAll" class="link danger">Clear all saved data</button>
+</div>
+
+</div><!-- /view-advanced -->
+
+<footer class="foot">
+  <span class="muted">Everything stays on your computer. Chrome asks where to save each file.</span>
+</footer>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalMeta">
+    <div class="modal-meta" id="modalMeta"></div>
+    <pre id="modalContent" class="modal-content"></pre>
+    <div class="modal-btns">
+      <button id="btnCopyModal" class="primary">Copy content</button>
+      <button id="btnCloseModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script src="../lib/merge.js"></script>
+<script src="../lib/exporter.js"></script>
+<script src="../lib/exportflow.js"></script>
+<script src="panel.js"></script>
+</body>
+</html>
