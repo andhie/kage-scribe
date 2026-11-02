@@ -220,6 +220,16 @@
   // *action* → italic, asterisks dropped. `**` and a lone `*` stay text.
   // tests/validate_docx.py holds the same pattern: keep them identical.
   const ITALIC_SRC = '(?<![*\\w])\\*(?![\\s*])([^*\\n]*?[^\\s*])?\\*(?![*\\w])';
+  // **strong** → bold, asterisks dropped; same lookaround contract as ITALIC_SRC.
+  const BOLD_SRC = '(?<![*\\w])\\*\\*(?![\\s*])([^*\\n]*?[^\\s*])?\\*\\*(?![*\\w])';
+  // A spoken span: straight or curly double quotes, never crossing a line.
+  const DIALOGUE_SRC = '(?:"[^"\\n]+")|(?:“[^”\\n]+”)';
+
+  // Leftmost span wins, nesting stays literal (as before). Capture layout:
+  // STORY 1 bold, 2 bold text, 3 dialogue, 4 italic, 5 italic text.
+  // PLAIN 1 bold, 2 bold text, 3 italic, 4 italic text.
+  const STORY_MARKUP = new RegExp('(' + BOLD_SRC + ')|(' + DIALOGUE_SRC + ')|(' + ITALIC_SRC + ')', 'g');
+  const PLAIN_MARKUP = new RegExp('(' + BOLD_SRC + ')|(' + ITALIC_SRC + ')', 'g');
 
   const BLUE = '1F4E79';
   const PURPLE = '7B5EA7';
@@ -239,25 +249,31 @@
 
   const pageBreak = () => '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
 
-  /** One line as runs: `*…*` spans italic, the rest in baseFmt. */
-  function inlineRuns(line, baseFmt) {
+  /** One line as runs: `**bold**`, quoted dialogue spans and `*…*` thoughts.
+   *  The dialogue and thoughts colors tint story text only — a user turn
+   *  keeps the persona color ('' inherits the base color). */
+  function markupRuns(line, base, c, story) {
+    const re = story ? STORY_MARKUP : PLAIN_MARKUP;
+    const iText = story ? 5 : 4; // capture index of the italic span's text
     let out = '';
     let last = 0;
-    for (const m of line.matchAll(new RegExp(ITALIC_SRC, 'g'))) {
-      if (m.index > last) out += run(line.slice(last, m.index), baseFmt);
-      out += run(m[1] || '', { ...baseFmt, i: true });
+    for (const m of line.matchAll(re)) {
+      if (m.index > last) out += run(line.slice(last, m.index), base);
+      if (m[1] !== undefined) out += run(m[2] || '', { ...base, b: true, color: c.bold || base.color });
+      else if (story && m[3] !== undefined) out += run(m[0], { ...base, color: c.dialogue || base.color });
+      else out += run(m[iText] || '', { ...base, i: true, color: (story ? c.thoughts : '') || base.color });
       last = m.index + m[0].length;
     }
-    return out + (last < line.length ? run(line.slice(last), baseFmt) : '');
+    return out + (last < line.length ? run(line.slice(last), base) : '');
   }
 
   /** Text as paragraphs on blank lines; a single "\n" stays <w:br/>.
    *  `lead` (runs) opens the first paragraph. */
-  function textParas(text, fmt, lead) {
+  function textParas(text, fmt, lead, c, story) {
     const out = [];
     for (const block of String(text).split(/\n[ \t]*\n/)) {
       if (!block.trim()) continue;
-      const runs = block.split('\n').map((l) => inlineRuns(l, fmt)).join('<w:r><w:br/></w:r>');
+      const runs = block.split('\n').map((l) => markupRuns(l, fmt, c, story)).join('<w:r><w:br/></w:r>');
       out.push(para((out.length ? '' : lead || '') + runs));
     }
     if (!out.length && lead) out.push(para(lead));
@@ -267,29 +283,39 @@
   /**
    * Storybook from KSFlow.storyBlocks(): per chat a title block (title, site,
    * plot summary, message count), then the messages. Direct run formatting
-   * only, so the zip keeps its 3 parts. Chats after the first start on a new
-   * page. User turns: a ✦ break, then the bold persona name. A scene header is
-   * a small italic line.
+   * only, so the zip keeps its 3 parts — 5 when a page tint is set (it needs
+   * word/settings.xml + its relationship; Word shows a tint on screen, not in
+   * print). Chats after the first start on a new page. User turns: a ✦ break,
+   * then the bold persona name. A scene header is a small italic line.
+   * `colors` (optional, from KSFlow.resolveDocxColors): narration, dialogue,
+   * thoughts, bold, scene, persona, background — '' inherits; the defaults
+   * here equal KSFlow.DOCX_PRESETS.print.colors (test-export.cjs pins that).
    */
-  function buildDOCX(story) {
+  function buildDOCX(story, colors) {
+    const c = {
+      narration: '', dialogue: '', thoughts: GREY, bold: '',
+      scene: PURPLE, persona: BLUE, background: '',
+      ...(colors || {})
+    };
     const enc = new TextEncoder();
     const paragraphs = [];
     const date = timestamp().replace(/^(\d{4})(\d{2})(\d{2}).*$/, '$1-$2-$3');
     (story.chats || []).forEach((chat, ci) => {
       if (ci) paragraphs.push(pageBreak());
-      paragraphs.push(para(run(chat.title, { b: true, sz: 36 }), true));
+      paragraphs.push(para(run(chat.title, { b: true, sz: 36, color: c.narration }), true));
       if (chat.site) paragraphs.push(para(run('A story played on ' + chat.site + '.ai', { color: GREY }), true));
-      if (chat.plotSummary) paragraphs.push(...textParas(chat.plotSummary, {}));
+      if (chat.plotSummary) paragraphs.push(...textParas(chat.plotSummary, { color: c.narration }, null, c, false));
       paragraphs.push(para(run(chat.count + (chat.count === 1 ? ' message' : ' messages') + ' · exported ' + date, { sz: 18, color: GREY }), true));
       for (const it of chat.items) {
-        if (it.isUser) paragraphs.push(para(run('✦', { color: PURPLE }), true));
-        if (it.header) paragraphs.push(para(run(it.header, { i: true, sz: 18, color: PURPLE })));
-        if (it.isUser) paragraphs.push(...textParas(it.text, { color: BLUE }, run(it.name + ':', { b: true, color: BLUE }) + '<w:r><w:t xml:space="preserve"> </w:t></w:r>'));
-        else paragraphs.push(...textParas(it.text, {}));
+        if (it.isUser) paragraphs.push(para(run('✦', { color: c.persona }), true));
+        if (it.header) paragraphs.push(para(run(it.header, { i: true, sz: 18, color: c.scene })));
+        if (it.isUser) paragraphs.push(...textParas(it.text, { color: c.persona }, run(it.name + ':', { b: true, color: c.persona }) + '<w:r><w:t xml:space="preserve"> </w:t></w:r>', c, false));
+        else paragraphs.push(...textParas(it.text, { color: c.narration }, null, c, true));
       }
     });
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      (c.background ? '<w:background w:color="' + c.background + '"/>' : '') +
       '<w:body>' + paragraphs.join('') +
       '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
       '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>' +
@@ -299,16 +325,28 @@
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
       '<Default Extension="xml" ContentType="application/xml"/>' +
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      (c.background ? '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>' : '') +
       '</Types>';
     const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
       '</Relationships>';
-    return buildZip([
+    const files = [
       { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
-      { name: '_rels/.rels', data: enc.encode(rootRels) },
-      { name: 'word/document.xml', data: enc.encode(documentXml) }
-    ]);
+      { name: '_rels/.rels', data: enc.encode(rootRels) }
+    ];
+    if (c.background) {
+      files.push(
+        { name: 'word/_rels/document.xml.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' +
+          '</Relationships>') },
+        { name: 'word/settings.xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+          '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:displayBackgroundShape/></w:settings>') }
+      );
+    }
+    files.push({ name: 'word/document.xml', data: enc.encode(documentXml) });
+    return buildZip(files);
   }
 
   /* ================= download ================= */
@@ -341,5 +379,5 @@
     return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
   }
 
-  g.KSExport = { toCSV, buildXLSX, buildDOCX, download, timestamp, ITALIC_SRC, XLSX_MIME, DOCX_MIME };
+  g.KSExport = { toCSV, buildXLSX, buildDOCX, download, timestamp, ITALIC_SRC, BOLD_SRC, DIALOGUE_SRC, XLSX_MIME, DOCX_MIME };
 })(typeof self !== 'undefined' ? self : globalThis);

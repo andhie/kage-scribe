@@ -1,7 +1,8 @@
 /*
  * Kage Scribe — background service worker (Manifest V3).
- * Owns all state: settings ({enabled} only; the capture patterns are
- * constants), raw captured responses (a live messages capture carries
+ * Owns all state: settings ({enabled} and the Word storybook colors
+ * `docxColors`; the capture patterns are constants), raw captured responses
+ * (a live messages capture carries
  * `formatOk`/`msgCount`, the source of the capture-health warning), the merged message store
  * (deduplicated by message _id across pages/requests/chats) and the
  * "fetch all pages" replay that backfills an entire chat. No replay starts
@@ -72,8 +73,8 @@ async function getState() {
         fetchStatus = { ...fetchStatus, running: false, error: 'Interrupted: the extension stopped during the load.', doneAt: Date.now() };
       }
       _state = {
-        // only `enabled` is read: keys of removed settings in an old store are ignored
-        settings: { enabled: ((got && got.ks_settings) || {}).enabled !== false },
+        // docxColors is cleaned here too: a tampered store must not reach exports
+        settings: sanitizeSettings((got && got.ks_settings) || { enabled: true }, { enabled: true }),
         raw,
         merged: idMap(got && got.ks_merged),
         chats: idMap(got && got.ks_chats),
@@ -593,10 +594,20 @@ async function backfillChatName(base, headers, st, chatId) {
 
 /* ------------------------------------------------ settings */
 
+const DOCX_COLOR_KEYS = ['narration', 'dialogue', 'thoughts', 'bold', 'scene', 'persona', 'background'];
+
 function sanitizeSettings(next, current) {
   const out = { ...current };
   if (next) {
     if (typeof next.enabled === 'boolean') out.enabled = next.enabled;
+    if (next.docxColors && typeof next.docxColors === 'object') {
+      const c = {};
+      for (const k of DOCX_COLOR_KEYS) {
+        const v = next.docxColors[k];
+        if (v === '' || (typeof v === 'string' && /^[0-9a-f]{6}$/i.test(v))) c[k] = v.toUpperCase();
+      }
+      out.docxColors = c; // the panel always sends the complete set
+    }
   }
   return out;
 }

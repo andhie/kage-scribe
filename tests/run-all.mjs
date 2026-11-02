@@ -55,15 +55,18 @@ if (existsSync(xlsx)) {
 }
 
 const docx = path.join(root, 'tests', 'out', 'transcript.docx');
-if (existsSync(docx)) {
-  console.log('\n━━━ validate_docx.mjs ━━━');
-  const r = spawnSync('node', [path.join(root, 'tests', 'validate_docx.mjs'), docx, path.join(root, 'tests', 'sample.json')], { stdio: 'inherit' });
+const docxColored = path.join(root, 'tests', 'out', 'transcript-colored.docx');
+for (const [file, args] of [[docx, []], [docxColored, ['--colored']]]) {
+  if (!existsSync(file)) {
+    if (file === docx) console.log('\n(validate_docx.mjs skipped — no docx generated)');
+    continue;
+  }
+  console.log(`\n━━━ validate_docx.mjs ${args.join(' ') || path.basename(file)} ━━━`);
+  const r = spawnSync('node', [path.join(root, 'tests', 'validate_docx.mjs'), file, path.join(root, 'tests', 'sample.json'), ...args], { stdio: 'inherit' });
   if (r.status !== 0) {
     console.log('FAIL validate_docx.mjs');
     failed++;
   }
-} else {
-  console.log('\n(validate_docx.mjs skipped — no docx generated)');
 }
 
 console.log(failed ? `\n${failed} step(s) FAILED` : `\nALL TESTS PASSED`);

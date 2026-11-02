@@ -19,8 +19,10 @@ are relative to `extension/`.
   script, 7 test files, then the XLSX/DOCX validators. Run before declaring
   any change done.
 - One file: `node tests/test-background.cjs` (any `tests/test-*`, any cwd).
-- The validators read `tests/out/messages.xlsx` / `transcript.docx`, written by
-  `test-export.cjs`; if missing, `run-all.mjs` skips them.
+- The validators read `tests/out/messages.xlsx` / `transcript.docx` /
+  `transcript-colored.docx`, written by `test-export.cjs`; if missing,
+  `run-all.mjs` skips them. The colored file is validated with `--colored`
+  (5 parts, per-role run colors).
 - `npm run icons` — regenerate `extension/icons/*.png`.
 - `npm run screenshots` — retake `docs/screenshots/*.png` (headless Chrome, real
   panel/popup, made-up chats). Rerun after a visible panel/popup change. Never
@@ -49,10 +51,13 @@ content/bridge.js (ISOLATED)        - ks:* message router
   the panel (`<script>`) and Node tests (`require`). Keep it dependency-free.
 - `lib/exportflow.js` (`globalThis.KSFlow`) is panel/test-only, loads after
   `merge.js`. It holds the chat/role/search/order filters (the table and every
-  export share them), summaries, the completeness check and the
-  load-before-export wait/retry loop.
-- `chrome.storage.local` keys: `ks_settings` (`{enabled}` only; the capture
-  filter and messages pattern are constants), `ks_raw`, `ks_merged` (map keyed
+  export share them), summaries, the completeness check, the
+  load-before-export wait/retry loop, and the Word storybook colors
+  (`DOCX_PRESETS`, `resolveDocxColors` — presets are light-only by decision).
+- `chrome.storage.local` keys: `ks_settings` (`{enabled}` plus the Word
+  storybook colors `docxColors`: the 7 known roles, each `''` or `RRGGBB`,
+  cleaned in `sanitizeSettings`; the capture filter and messages pattern are
+  constants), `ks_raw`, `ks_merged` (map keyed
   by message `_id`, last seen wins), `ks_chats`, `ks_fetch`. A new key needs an
   entry in the `field` map of `flush()`, or it is written as `undefined`.
 - Only the background writes state. Panel/popup use `ks:*` runtime messages
@@ -91,11 +96,21 @@ content/bridge.js (ISOLATED)        - ks:* message router
 - Export rules:
   - CSV/JSON never truncate. CSV text cells starting with `= + - @`, tab or CR
     get a leading `'` (`csvCell`). XLSX truncates cells at 32k chars.
-  - DOCX storybook (`KSFlow.storyBlocks` → `buildDOCX`): per chat a title block,
-    then messages oldest first; OOC (`type: 'ooc'`) dropped; user messages
-    carry the bold persona name ("You" if empty); a leading scene header is one
-    small italic line; `*action*` is italic (`ITALIC_SRC`, shared with
-    `validate_docx.mjs`); direct formatting only, 3 zip parts.
+  - DOCX storybook (`KSFlow.storyBlocks` → `buildDOCX(story, colors)`): per
+    chat a title block, then messages oldest first; OOC (`type: 'ooc'`)
+    dropped; user messages carry the bold persona name ("You" if empty); a
+    leading scene header is one small italic line. Story markup, one pass,
+    leftmost span wins, nesting stays literal: `**strong**` → bold
+    (`BOLD_SRC`), quoted spans (`DIALOGUE_SRC`, straight/curly double quotes)
+    → dialogue color, `*action*` → italic (`ITALIC_SRC`) in the thoughts
+    color; the dialogue and thoughts colors tint story text only — user
+    turns keep the persona color; all three patterns are shared with
+    `validate_docx.mjs`. Colors come from `KSFlow.resolveDocxColors`
+    (settings over the Print defaults, which `buildDOCX` also applies when
+    called bare — `test-export.cjs` pins them equal). Direct formatting only,
+    3 zip parts — 5 when a page tint is set (`word/settings.xml` with
+    `displayBackgroundShape` + its relationship; Word shows a tint on screen,
+    not in print).
   - `Block (20 msgs)` is the last column of CSV/Excel/JSON. `KSFlow.blockNumbers`
     runs on the whole store before any filter (per chat, oldest first, OOC
     skipped), so filters never move a number.

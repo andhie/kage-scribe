@@ -279,6 +279,27 @@ const runThatFills = (state, extra) => {
   assert.ok(!r.ok && /isekaizero tab/.test(r.error), r.error);
 }
 
-console.log('PASS flow: filters/summaries/completeness + 7 wait-loop scenarios (happy, adoption, retry, error, timeout, warning on failed reload, site name)');
+// 6. Word storybook colors: presets complete and light, resolve over defaults
+{
+  const HEX = /^[0-9A-F]{6}$/;
+  for (const [id, preset] of Object.entries(F.DOCX_PRESETS)) {
+    assert.deepStrictEqual(Object.keys(preset.colors).sort(), [...F.DOCX_COLOR_KEYS].sort(), `preset ${id} covers every key`);
+    for (const [k, v] of Object.entries(preset.colors)) {
+      assert.ok(v === '' || HEX.test(v), `preset ${id}.${k} is '' or RRGGBB: ${v}`);
+      if (k === 'background' && v) { // light themes only (the user's call): every channel near-white
+        const ch = [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16));
+        assert.ok(ch.every((x) => x >= 0xe0), `preset ${id} page tint stays light: ${v}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(F.resolveDocxColors(undefined), F.DOCX_PRESETS.print.colors, 'no settings → Print defaults');
+  assert.deepStrictEqual(
+    F.resolveDocxColors({ docxColors: { dialogue: 'b85c1e', thoughts: 'junk', background: '' } }),
+    { ...F.DOCX_PRESETS.print.colors, dialogue: 'B85C1E', background: '' },
+    'saved values win, junk falls back, hex uppercased'
+  );
+}
+
+console.log('PASS flow: filters/summaries/completeness + 7 wait-loop scenarios (happy, adoption, retry, error, timeout, warning on failed reload, site name) + docx colors');
 
 })().catch((err) => { console.error(err); process.exit(1); });

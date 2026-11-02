@@ -27,6 +27,7 @@ const base = `http://127.0.0.1:${server.address().port}/extension/`;
 const shots = [
   ['panel-chats.png', 'panel/panel.html?shot=simple', '1200,720'],
   ['panel-messages.png', 'panel/panel.html?shot=advanced', '1200,800'],
+  ['panel-style.png', 'panel/panel.html?shot=style', '1200,1120'],
   ['panel-developer.png', 'panel/panel.html?shot=developer', '1200,800'],
   ['popup.png', 'popup/popup.html', '320,235']
 ];

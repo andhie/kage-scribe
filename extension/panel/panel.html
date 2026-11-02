@@ -36,6 +36,7 @@
 
 <nav class="tabs" aria-label="Advanced sections">
   <button data-tab="merged" class="active" aria-pressed="true">Messages</button>
+  <button data-tab="style" aria-pressed="false">Word style</button>
   <button data-tab="captures" aria-pressed="false">Developer</button>
 </nav>
 
@@ -73,6 +74,20 @@
       <button class="exp" data-fmt="xlsx">Excel</button>
       <button class="exp" data-fmt="csv">CSV</button>
       <button class="exp" data-fmt="json">JSON</button>
+    </div>
+  </section>
+
+  <!-- Word style tab: colors of the storybook .docx export. -->
+  <section id="view-style" class="view view-scroll hidden">
+    <div class="style-page">
+      <div class="page-head">
+        <h2>Word storybook colors</h2>
+        <p class="muted">Recolor the Word file you download — like the site’s own chat colors. Applies to every storybook, on this computer only.</p>
+      </div>
+      <div id="stylePreview" class="style-preview" aria-hidden="true"></div>
+      <div id="stylePresets" class="style-presets" role="group" aria-label="Color presets"></div>
+      <div id="styleRows" class="style-rows"></div>
+      <p class="muted style-note">Word shows the page tint on screen; printing and PDF export stay white. These colors never touch your chats or the site.</p>
     </div>
   </section>
 

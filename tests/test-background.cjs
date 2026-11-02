@@ -201,11 +201,27 @@ const capture = (url, body, extra) => ({
       { enabled: false },
       'settings persisted'
     );
+
+    // Word storybook colors: known keys only, '' or RRGGBB, uppercased, junk dropped
+    // (before the `old` load below: a second loadBackground swaps the global
+    //  chrome shim, and this background's writes would land in that storage)
+    r = await bg.send({
+      type: 'ks:settings',
+      settings: { enabled: true, docxColors: { narration: '2a2638', dialogue: '', thoughts: 'oops', bold: 7, scene: '#B4562B', persona: 'B4562B', background: 'F7F5FA', rouge: 'AABBCC' } }
+    });
+    assert.deepStrictEqual(r.settings.docxColors,
+      { narration: '2A2638', dialogue: '', persona: 'B4562B', background: 'F7F5FA' }, 'docxColors cleaned');
+    assert.deepStrictEqual(bg.chrome.storage.local._data.ks_settings.docxColors,
+      { narration: '2A2638', dialogue: '', persona: 'B4562B', background: 'F7F5FA' }, 'docxColors persisted');
+
     // a store saved by an older version loads as {enabled} and onInstalled writes it back clean
     const old = loadBackground({ storage: { ks_settings: { enabled: false, captureFilter: '/x/', messagesPattern: 'y', autoSync: true } } });
     assert.deepStrictEqual((await old.state()).settings, { enabled: false });
     await old.chrome.__onInstalled({ reason: 'update' });
     assert.deepStrictEqual(old.chrome.storage.local._data.ks_settings, { enabled: false }, 'old keys leave storage on update');
+    // a tampered docxColors store is cleaned on load
+    const tampered = loadBackground({ storage: { ks_settings: { enabled: true, docxColors: { scene: '6d5ba6', background: '', evil: 'FF0000' } } } });
+    assert.deepStrictEqual((await tampered.state()).settings, { enabled: true, docxColors: { scene: '6D5BA6', background: '' } });
   }
 
   /* ---- 5. persistence across service-worker restarts */

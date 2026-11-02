@@ -126,6 +126,36 @@
     return { chats: [...byChat.values()] };
   }
 
+  /* ---------------- Word storybook colors ---------------- */
+
+  /** The recolorable roles of the Word storybook; value is '' (inherit) or 'RRGGBB'. */
+  const DOCX_COLOR_KEYS = ['narration', 'dialogue', 'thoughts', 'bold', 'scene', 'persona', 'background'];
+  const HEX = /^[0-9a-f]{6}$/i;
+
+  /** Light presets only (the file is for reading and printing). `print` is the
+   *  storybook's own look and must stay identical to buildDOCX's built-in
+   *  defaults in lib/exporter.js — test-export.cjs pins them byte-equal. */
+  const DOCX_PRESETS = {
+    print: { label: 'Print', colors: { narration: '', dialogue: '', thoughts: '808080', bold: '', scene: '7B5EA7', persona: '1F4E79', background: '' } },
+    classic: { label: 'Classic', colors: { narration: '2A2638', dialogue: 'B85C1E', thoughts: '8E8AA0', bold: '', scene: '6D5BA6', persona: '1F4E79', background: 'F7F5FA' } },
+    ember: { label: 'Ember', colors: { narration: '33261C', dialogue: 'A8481F', thoughts: '9A8D7E', bold: '', scene: '6B5B4A', persona: '2F5D68', background: 'F8F1E7' } },
+    moonlight: { label: 'Moonlight', colors: { narration: '1F2937', dialogue: '2E6FA3', thoughts: '8B93A3', bold: '', scene: '7A5FA0', persona: '164E63', background: 'F2F6FA' } },
+    monochrome: { label: 'Monochrome', colors: { narration: '111111', dialogue: '555555', thoughts: '969696', bold: '', scene: '6E6E6E', persona: '262626', background: '' } }
+  };
+
+  /** Saved settings → a complete color set: stored values over the Print
+   *  defaults, every unknown or malformed value replaced. */
+  function resolveDocxColors(settings) {
+    const saved = (settings && typeof settings.docxColors === 'object' && settings.docxColors) || {};
+    const def = DOCX_PRESETS.print.colors;
+    const out = {};
+    for (const k of DOCX_COLOR_KEYS) {
+      const v = saved[k];
+      out[k] = (v === '' || (typeof v === 'string' && HEX.test(v))) ? v.toUpperCase() : def[k];
+    }
+    return out;
+  }
+
   /** Translate a fetch-all failure into something a non-technical user can act on. */
   function friendlyFetchError(err, site) {
     const s = String(err || '');
@@ -260,6 +290,9 @@
     storyBlocks,
     blockNumbers,
     BLOCK_SIZE,
+    DOCX_COLOR_KEYS,
+    DOCX_PRESETS,
+    resolveDocxColors,
     createFlow
   };
 })(typeof self !== 'undefined' ? self : globalThis);

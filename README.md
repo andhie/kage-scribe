@@ -60,7 +60,7 @@ list.
 
 | Format | What you get |
 |---|---|
-| **Word** (.docx) | A storybook to read, edit or save as PDF. Each chat starts with a title block (title, site, plot summary, message count). Your messages carry your persona name, scene headers (`Day … Time … Location`) become small italic lines, `*actions*` are italic, and out-of-character (OOC) messages are left out. Several chats start on separate pages. |
+| **Word** (.docx) | A storybook to read, edit or save as PDF. Each chat starts with a title block (title, site, plot summary, message count). Your messages carry your persona name, scene headers (`Day … Time … Location`) become small italic lines, `*actions*` are italic, `**strong**` text is bold, spoken lines in quotes get their own color, and out-of-character (OOC) messages are left out. Several chats start on separate pages. Colors are yours to pick — see **Word style** below. |
 | **Excel** (.xlsx) / **CSV** | One row per message: time, role, name, content, model, tokens, cost, IDs and a **Block (20 msgs)** column. Excel adds a filter row. |
 | **JSON** | All fields, for scripts. |
 
@@ -78,13 +78,22 @@ running it as a formula.
 
 ## Advanced view
 
-The **Advanced** switch at the top of the panel opens two tabs.
+The **Advanced** switch at the top of the panel opens three tabs.
 
 **Messages** shows every saved message in a table, with chat, role, search and
 order filters. Exports from here follow the filters. **Reload full chat**
 loads a chat's full history on demand.
 
 ![Messages tab](docs/screenshots/panel-messages.png)
+
+**Word style** recolors the Word storybook, like the site's own chat colors.
+Pick a light preset (Print, Classic, Ember, Moonlight, Monochrome) or set each
+color yourself: narration, dialogue, thoughts and actions, bold, scene headers,
+your persona, and the page tint. The preview shows the result live, and every
+Word export on this computer uses it. Word shows the page tint on screen;
+printing and PDF export stay white.
+
+![Word style tab](docs/screenshots/panel-style.png)
 
 **Developer** lists every captured API response, with a JSON tree, the raw
 body and the request details. **Capture settings** shows which URLs are

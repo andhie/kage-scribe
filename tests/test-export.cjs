@@ -101,9 +101,14 @@ const CHAT_ID = msgs[0]._chatId;
 const usr = (id, createdAt, content) => ({ _id: id, _chatId: CHAT_ID, role: 'user', type: 'normal', createdAt,
   choices: [{ _id: id + 'c', content, characterName: 'Mira' }] });
 const hostile = usr('hostile-1', '2099-01-01T00:00:00.000Z', 'evil <&> "quotes" *x*\nsecond line\n\nfourth after blank');
+const ai = (id, createdAt, content) => ({ _id: id, _chatId: CHAT_ID, role: 'assistant', type: 'normal', createdAt,
+  choices: [{ _id: id + 'c', content }] });
+// exercises every story role: scene header, dialogue, thoughts, bold
+const storyMsg = ai('ai-1', '2099-01-01T00:00:02.000Z',
+  '<t>Day 4 · Dawn · The kitchen</t>\n\n“Quiet now,” she whispered, and the house held its breath. *Nothing stirs at this hour.* The kettle **began to rumble**, loud as thunder.');
 const ooc = { ...usr('ooc-1', '2099-01-01T00:00:01.000Z', 'OOC-SECRET'), type: 'ooc' };
 const PLOT = 'A made-up plot summary & more.';
-const story = F.storyBlocks(msgs.concat([hostile, ooc]), { [CHAT_ID]: { name: 'Test <Story>', site: 'isekaizero', plotSummary: PLOT } });
+const story = F.storyBlocks(msgs.concat([hostile, storyMsg, ooc]), { [CHAT_ID]: { name: 'Test <Story>', site: 'isekaizero', plotSummary: PLOT } });
 const docx = E.buildDOCX(story);
 fs.writeFileSync(path.join(outDir, 'transcript.docx'), docx);
 assert.ok(docx[0] === 0x50 && docx[1] === 0x4b, 'docx zip magic');
@@ -126,14 +131,44 @@ assert.ok(text.includes('evil <&> "quotes" |x'), 'hostile text unescaped in the 
 assert.ok(xml.includes('evil &lt;&amp;&gt; &quot;quotes&quot;') && xml.includes('Test &lt;Story&gt;'), 'and escaped in the XML');
 assert.ok(!text.includes('OOC-SECRET'), 'OOC message left out');
 assert.ok(xml.includes('<w:i/>'), 'italic runs');
+assert.ok(xml.includes('<w:i/><w:color w:val="808080"/>'), 'italic runs grey by default');
+assert.strictEqual(docXml(docx), docXml(E.buildDOCX(story, F.DOCX_PRESETS.print.colors)),
+  'no colors === the Print preset (defaults pinned)');
 assert.strictEqual((Buffer.from(docx).toString('latin1').match(/PK\x03\x04/g) || []).length, 3, 'still 3 zip parts');
 
-// shared pattern with tests/validate_docx.py: the cases the design names
+// shared patterns with tests/validate_docx.mjs: the cases the design names
 const italics = (line) => [...line.matchAll(new RegExp(E.ITALIC_SRC, 'g'))].map((m) => m[1]);
 assert.deepStrictEqual(italics('*a*'), ['a']);
 assert.deepStrictEqual(italics('*a* b *c*'), ['a', 'c']);
 assert.deepStrictEqual(italics('**bold** and * lone * and 2*3*4'), []);
 assert.deepStrictEqual(italics('he *waits, quietly.* ok'), ['waits, quietly.']);
+const bolds = (line) => [...line.matchAll(new RegExp(E.BOLD_SRC, 'g'))].map((m) => m[1]);
+assert.deepStrictEqual(bolds('**bold**'), ['bold']);
+assert.deepStrictEqual(bolds('a **b** c **d**'), ['b', 'd']);
+assert.deepStrictEqual(bolds('** spaced ** and x**y**'), [], 'spaced or word-adjacent stars stay text');
+const dias = (line) => [...line.matchAll(new RegExp(E.DIALOGUE_SRC, 'g'))].map((m) => m[0]);
+assert.deepStrictEqual(dias('he said "hi" then “lo”'), ['"hi"', '“lo”']);
+assert.deepStrictEqual(dias('"unclosed and ‘single’'), [], 'unclosed and single quotes stay text');
+
+// --- DOCX colors: every role set, page tint on (validate_docx checks the file)
+const COLORS = { narration: '2A2638', dialogue: 'B85C1E', thoughts: '8E8AA0', bold: 'A03030', scene: '6D5BA6', persona: '43386E', background: 'F7F5FA' };
+const colored = E.buildDOCX(story, COLORS);
+fs.writeFileSync(path.join(outDir, 'transcript-colored.docx'), colored);
+const cbuf = Buffer.from(colored);
+assert.strictEqual((cbuf.toString('latin1').match(/PK\x03\x04/g) || []).length, 5, 'page tint adds settings + rels (5 parts)');
+assert.ok(cbuf.includes(Buffer.from('<w:background w:color="F7F5FA"/>')), 'page tint element');
+assert.ok(cbuf.includes(Buffer.from('<w:displayBackgroundShape/>')), 'Word told to show the tint');
+const cxml = docXml(colored);
+const runXml = (pr, t) => '<w:r>' + (pr ? '<w:rPr>' + pr + '</w:rPr>' : '') + '<w:t xml:space="preserve">' + t + '</w:t></w:r>';
+assert.ok(cxml.includes(runXml('<w:color w:val="B85C1E"/>', '“Quiet now,”')), 'dialogue span colored');
+assert.ok(cxml.includes(runXml('<w:b/><w:color w:val="A03030"/>', 'began to rumble')), 'bold span colored, asterisks dropped');
+assert.ok(!wt(cxml).includes('**'), 'no literal ** left in the colored build');
+assert.ok(cxml.includes(runXml('<w:i/><w:color w:val="8E8AA0"/>', 'Nothing stirs at this hour.')), 'thoughts colored');
+assert.ok(cxml.includes(runXml('<w:i/><w:color w:val="6D5BA6"/><w:sz w:val="18"/>', 'Day 4 · Dawn · The kitchen')), 'scene header colored');
+assert.ok(cxml.includes(runXml('<w:b/><w:color w:val="43386E"/>', 'Mira:')), 'persona name colored');
+assert.ok(cxml.includes(runXml('<w:color w:val="43386E"/>', 'evil &lt;&amp;&gt; &quot;quotes&quot; ')), 'user turn colored whole — quotes are not dialogue there');
+assert.ok(cxml.includes(runXml('<w:i/><w:color w:val="43386E"/>', 'x')), 'user-turn *action* stays persona (thoughts color is story-only)');
+assert.ok(cxml.includes(runXml('<w:color w:val="2A2638"/>', ', loud as thunder.')), 'narration colored');
 // without a plot summary: only the other title block lines
 const noPlot = wt(docXml(E.buildDOCX({ chats: [{ title: 'T', site: '', plotSummary: '', count: 0, items: [] }] })));
 assert.ok(/^T\|0 messages · exported /.test(noPlot), noPlot);

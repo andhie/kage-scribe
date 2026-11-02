@@ -117,6 +117,7 @@ async function refresh() {
   const r = await KSFlow.loadState(send);
   if (r) {
     S = r;
+    if (!styleColors) styleColors = KSFlow.resolveDocxColors(S.settings);
     renderAll();
   }
 }
@@ -560,6 +561,167 @@ function renderFetchStatus() {
   }
 }
 
+/* ------------------------------------------------ Word style tab */
+
+/* The storybook colors, edited here and saved through ks:settings. Seeded by
+   refresh() from the loaded settings (never the boot placeholder), then local
+   truth between the debounced saves. */
+let styleColors = null;
+let styleBuilt = false;
+const styleEls = {};   // key -> { input, inhBtn, inhSpan }
+let previewRefs = null;
+
+const STYLE_ROWS = [
+  { key: 'narration', name: 'Narration', hint: 'the story text', clear: 'Auto' },
+  { key: 'dialogue', name: 'Dialogue', hint: 'spoken lines in “quotes”', clear: 'Inherit' },
+  { key: 'thoughts', name: 'Thoughts & actions', hint: 'the parts written in asterisks', clear: 'Inherit' },
+  { key: 'bold', name: 'Bold accent', hint: 'text marked with double asterisks', clear: 'Inherit' },
+  { key: 'scene', name: 'Scene headers', hint: 'the small Day · Time lines', clear: 'Auto' },
+  { key: 'persona', name: 'Your persona', hint: '✦ your name and your messages', clear: 'Auto' },
+  { key: 'background', name: 'Page tint', hint: 'the page behind the text', clear: 'None' }
+];
+
+/** What each preview element should show: a set color, or what '' resolves to. */
+function styleResolved() {
+  const narr = styleColors.narration || '000000';
+  return {
+    narration: narr,
+    dialogue: styleColors.dialogue || narr,
+    thoughts: styleColors.thoughts || narr,
+    bold: styleColors.bold || narr,
+    scene: styleColors.scene || '000000',
+    persona: styleColors.persona || '000000',
+    background: styleColors.background || 'FFFFFF'
+  };
+}
+
+let styleSaveTimer = 0;
+function sendStyle() {
+  styleSaveTimer = 0;
+  send('ks:settings', { settings: { docxColors: { ...styleColors } } });
+}
+function saveStyle() {
+  clearTimeout(styleSaveTimer);
+  styleSaveTimer = setTimeout(sendStyle, 250);
+}
+// a save still waiting out its debounce when the page closes would be lost
+window.addEventListener('pagehide', () => { if (styleSaveTimer) { clearTimeout(styleSaveTimer); sendStyle(); } });
+
+function buildStylePreview() {
+  const box = $('#stylePreview');
+  const p = (cls, text) => { const n = el('p', cls, text); box.append(n); return n; };
+  const s = (parent, text) => { const n = el('span', null, text); parent.append(n); return n; };
+
+  const sceneP = p('pv-scene', 'Day 3 · Dusk · The lantern room');
+  const narr1 = s(p(), 'Rain drummed against the shutters as she stepped inside, shaking the water from her coat.');
+  const diaP = p();
+  const dia = s(diaP, '“You came back,”');
+  const diaTail = s(diaP, ' he said, and the words hung there between them.');
+  const thP = p();
+  const thi = el('em', null, 'He had not expected her — not tonight, not in this weather.');
+  thP.append(thi);
+  const boldP = p();
+  const b1 = s(boldP, 'The lantern guttered, and ');
+  const bb = el('b', null, 'something moved');
+  boldP.append(bb);
+  const b2 = s(boldP, ' in the dark.');
+  const perP = p('pv-persona');
+  const star = el('span', 'pv-star', '✦');
+  perP.append(star);
+  const name = el('b', null, 'Mira:');
+  perP.append(name);
+  const tail = s(perP, ' I brought supplies — and the good bread, this time.');
+
+  previewRefs = { box, sceneP, narr1, dia, diaTail, thi, b1, bb, b2, star, name, tail };
+}
+
+function buildStyleTab() {
+  buildStylePreview();
+
+  const presets = $('#stylePresets');
+  for (const [id, preset] of Object.entries(KSFlow.DOCX_PRESETS)) {
+    const b = el('button', null, preset.label);
+    b.dataset.preset = id;
+    b.addEventListener('click', () => {
+      styleColors = { ...preset.colors };
+      syncStyle();
+      saveStyle();
+    });
+    presets.append(b);
+  }
+
+  const rows = $('#styleRows');
+  for (const row of STYLE_ROWS) {
+    const lbl = el('div', 'lbl');
+    lbl.append(el('div', 'name', row.name), el('div', 'hint', row.hint));
+
+    const input = el('input', 'swatch');
+    input.type = 'color';
+    input.title = row.name + ' color';
+    input.setAttribute('aria-label', row.name + ' color');
+    input.addEventListener('input', () => {
+      styleColors[row.key] = input.value.slice(1).toUpperCase();
+      syncStyle();
+      saveStyle();
+    });
+
+    // the cleared state reads as a value (like the site's "Inherit"); a set
+    // row offers the same word as a link that clears it again
+    const inhSpan = el('span', 'inh', row.clear);
+    const inhBtn = el('button', 'inh', row.clear);
+    inhBtn.title = 'Back to ' + row.clear.toLowerCase();
+    inhBtn.addEventListener('click', () => {
+      styleColors[row.key] = '';
+      syncStyle();
+      saveStyle();
+    });
+
+    const val = el('div', 'val');
+    val.append(inhSpan, inhBtn, input);
+    const r = el('div', 'style-row');
+    r.append(lbl, val);
+    rows.append(r);
+    styleEls[row.key] = { input, inhSpan, inhBtn };
+  }
+}
+
+function syncStyle() {
+  const r = styleResolved();
+  previewRefs.box.style.background = styleColors.background ? '#' + styleColors.background : '#fff';
+  previewRefs.sceneP.style.color = '#' + r.scene;
+  previewRefs.narr1.style.color = '#' + r.narration;
+  previewRefs.dia.style.color = '#' + r.dialogue;
+  previewRefs.diaTail.style.color = '#' + r.narration;
+  previewRefs.thi.style.color = '#' + r.thoughts;
+  previewRefs.b1.style.color = '#' + r.narration;
+  previewRefs.bb.style.color = '#' + r.bold;
+  previewRefs.b2.style.color = '#' + r.narration;
+  previewRefs.star.style.color = '#' + r.persona;
+  previewRefs.name.style.color = '#' + r.persona;
+  previewRefs.tail.style.color = '#' + r.persona;
+
+  for (const row of STYLE_ROWS) {
+    const v = styleColors[row.key];
+    const refs = styleEls[row.key];
+    refs.input.value = '#' + (v || r[row.key]);
+    refs.inhSpan.hidden = !!v;
+    refs.inhBtn.hidden = !v;
+  }
+
+  const cur = JSON.stringify(styleColors);
+  $$('#stylePresets button').forEach((b) => {
+    const on = JSON.stringify(KSFlow.DOCX_PRESETS[b.dataset.preset].colors) === cur;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+}
+
+function renderStyle() {
+  if (!styleColors) return; // empty until refresh() seeds it from the loaded settings
+  if (!styleBuilt) { buildStyleTab(); styleBuilt = true; }
+  syncStyle();
+}
+
 /* ------------------------------------------------ modal */
 
 let modalReturnFocus = null;
@@ -602,7 +764,9 @@ async function downloadMerged(msgs, fmt, opts) {
   const blocks = KSFlow.blockNumbers(S.merged);
   if (fmt === 'docx') {
     // Storybook: title block per chat, persona names, scene headers, no OOC.
-    result = await KSExport.download((o.docxBase || base) + '-' + stamp + '.docx', KSExport.DOCX_MIME, KSExport.buildDOCX(KSFlow.storyBlocks(msgs, S.chats)));
+    // Colors come from the Advanced → Word style tab (Print look by default).
+    result = await KSExport.download((o.docxBase || base) + '-' + stamp + '.docx', KSExport.DOCX_MIME,
+      KSExport.buildDOCX(KSFlow.storyBlocks(msgs, S.chats), KSFlow.resolveDocxColors(S.settings)));
   } else if (fmt === 'json') {
     const rows = msgs.map((m, i) => KSMerge.messageToRow(m, i + 1, blocks.get(m._id)));
     result = await KSExport.download(base + '-' + stamp + '.json', 'application/json',
@@ -767,6 +931,7 @@ function renderAll() {
   renderStats();
   if (ui.view === 'simple') renderSimple();
   else if (ui.tab === 'merged') renderMerged();
+  else if (ui.tab === 'style') renderStyle();
   else { renderCaptureList(); renderInspector(); }
 }
 
@@ -793,6 +958,7 @@ function applyTab(tab) {
   setPressed($$('.tabs button'), (b) => b.dataset.tab === tab);
   $('#view-captures').classList.toggle('hidden', tab !== 'captures');
   $('#view-merged').classList.toggle('hidden', tab !== 'merged');
+  $('#view-style').classList.toggle('hidden', tab !== 'style');
   renderAll();
 }
 

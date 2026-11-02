@@ -349,6 +349,69 @@ summary .cnt { color: var(--muted); }
 .v.null { color: var(--muted); }
 button.linklike { border: none; color: var(--accent); padding: 0 4px; font-size: 11px; font-weight: 400; }
 
+/* ---------- Word style tab ---------- */
+
+/* A scrollable column like the simple view's page, not a dashboard pane. */
+.view-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.style-page { max-width: 640px; margin: 0 auto; padding: 26px 24px 56px; }
+.style-page .page-head p { max-width: 52ch; }
+
+/* The paper: a slice of the Word page, so it reads as a document, not as UI.
+   Serif on purpose — this is the storybook, the chrome around it stays sans. */
+.style-preview {
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, .35);
+  font: 14.5px/1.7 Georgia, "Times New Roman", serif;
+  margin-bottom: 18px;
+  transition: background .15s;
+}
+.style-preview p { margin: 0 0 10px; }
+.style-preview p:last-child { margin-bottom: 0; }
+.style-preview .pv-scene { font-size: 12px; font-style: italic; margin-bottom: 12px; }
+.style-preview .pv-persona { margin-top: 14px; }
+.style-preview .pv-star { margin-right: 6px; }
+.style-preview b { font-weight: 700; }
+
+.style-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.style-presets button {
+  border-radius: 999px; padding: 5px 15px;
+  font: 600 12.5px var(--sans); color: var(--muted);
+}
+.style-presets button:hover { color: var(--text); }
+.style-presets button.active {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-wash);
+}
+
+.style-rows { margin-top: 14px; }
+.style-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 2px; border-bottom: 1px solid var(--line);
+}
+.style-row:last-child { border-bottom: none; }
+.style-row .lbl { flex: 1; min-width: 0; }
+.style-row .lbl .name { font-weight: 600; font-size: 13.5px; }
+.style-row .lbl .hint { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.style-row .val { display: flex; align-items: center; gap: 10px; flex: none; }
+.style-row .inh { font-size: 12px; color: var(--muted); padding: 2px 4px; }
+.style-row button.inh { border: none; padding: 2px 4px; font-size: 12px; color: var(--muted); font-weight: 400; }
+.style-row button.inh:hover { color: var(--accent); }
+
+/* Round swatch: the color input is the button, Chrome pops the picker. */
+input.swatch {
+  appearance: none; -webkit-appearance: none;
+  width: 28px; height: 28px; padding: 0; border: none;
+  border-radius: 50%; background: none; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .4);
+}
+input.swatch::-webkit-color-swatch-wrapper { padding: 0; }
+/* the ring lives on the swatch: an inset shadow on the input would paint under it */
+input.swatch::-webkit-color-swatch { border: 2px solid rgba(255, 255, 255, .5); border-radius: 50%; }
+input.swatch:hover::-webkit-color-swatch { border-color: rgba(255, 255, 255, .85); }
+
+.style-note { font-size: 12px; margin: 14px 0 0; }
+
 /* ---------- footer ---------- */
 
 .foot {

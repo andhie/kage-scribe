@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "111",
   "name": "Kage Scribe",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiA1J+0Twpb4auCvtTXchfQ8KHS+2cNBNxwJe4AuSe7/AWCt5mVuJ94r5PsGJ18SHdJcogSb0cSxOYpskmEjXgYxv4H+Nyw/ZLGiHRC+vZ1JLZx18GX9LQ7x4hAlDhIIaRq7Qhz25wU16MiMwa0UJxGOtS9dM9MRg+/0Q0L2qN7LTtl0YVbRlhNTMrK6SQo0X6fIL12nBGlbfNsioLAES6P61u5in33CqQZEo3giXlSjowjfIIwfrw57rCKG1C4PckIXMF287OnnhWbW02Tgs1CUiKyQ6H0RAutcY5LUoSXAxg85ajMJfQaK6Pxn9WUpu6IV0972n4WS+7OVRDcQsMQIDAQAB",
   "description": "Save your chats from isekaizero.ai and kagesekai.ai, and download them as Word, Excel, CSV or JSON.",
   "permissions": ["storage", "unlimitedStorage", "downloads"],

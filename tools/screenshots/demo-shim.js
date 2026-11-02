@@ -142,4 +142,11 @@
       if (msg) msg.closest('.req').click();
     }, 400));
   }
+  if (shot === 'style') {
+    window.addEventListener('load', () => setTimeout(() => {
+      document.querySelector('.tabs button[data-tab="style"]').click();
+      // Classic, so the shot shows the feature (tinted paper, colored dialogue)
+      document.querySelector('#stylePresets button[data-preset="classic"]').click();
+    }, 400));
+  }
 })();
