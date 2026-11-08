@@ -1,7 +1,7 @@
 {
   "name": "kage-scribe",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Save your chats from isekaizero.ai and kagesekai.ai, and download them as Word, Excel, CSV or JSON.",
   "scripts": {
     "test": "node tests/run-all.mjs",
