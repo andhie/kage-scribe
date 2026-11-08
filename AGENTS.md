@@ -143,7 +143,7 @@ content/bridge.js (ISOLATED)        - ks:* message router
   shims (`loadBackground()`); delete `require.cache` per scenario.
 - `validate_xlsx.mjs` / `validate_docx.mjs` read zips with `tests/officezip.mjs`,
   not extension code, so they cannot share a bug with the writers.
-  `validate_xlsx.mjs` also opens the file with `exceljs`, the only
+  `validate_xlsx.mjs` also opens the file with `xlsx` (SheetJS), the only
   devDependency.
 - Gotchas: `Uint8Array.includes(Buffer)` tests element membership, not substring
   (use `Buffer.from(x).includes(...)`); window shims need an `addEventListener`

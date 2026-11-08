@@ -1,8 +1,11 @@
 // External validation of a generated XLSX: zip CRC integrity, well-formed XML
 // in every member, sheet/row/cell structure, truncation and numeric cells.
 import assert from 'node:assert/strict';
-import ExcelJS from 'exceljs';
+import * as fs from 'node:fs';
+import * as XLSX from 'xlsx';
 import { readZip, parseXml, all, child } from './officezip.mjs';
+
+XLSX.set_fs(fs);
 
 const z = readZip(process.argv[2]);
 const expected = ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml',
@@ -35,13 +38,14 @@ const sheets = all(trees['xl/workbook.xml'], 'sheet').map((s) => s.attrs.name);
 assert.deepEqual(sheets, ['Messages', 'Chats'], `sheets: ${sheets}`);
 
 // A real spreadsheet reader must open it and see what the raw XML says.
-const wb = new ExcelJS.Workbook();
-await wb.xlsx.readFile(process.argv[2]);
-assert.deepEqual(wb.worksheets.map((w) => w.name), ['Messages', 'Chats'], 'exceljs sheet names');
-const ws = wb.getWorksheet('Messages');
-assert.equal(ws.rowCount, 13, `exceljs rows: ${ws.rowCount}`);
-assert.equal(ws.getRow(1).getCell(19).value, 'Block (20 msgs)', 'exceljs header');
-assert.ok(ws.getRow(2).values.some((v) => typeof v === 'number'), 'exceljs reads a numeric cell as a number');
-assert.equal(ws.autoFilter, 'A1:S13', 'exceljs autoFilter');
+const wb = XLSX.readFile(process.argv[2]);
+assert.deepEqual(wb.SheetNames, ['Messages', 'Chats'], 'sheetjs sheet names');
+const ws = wb.Sheets.Messages;
+const range = XLSX.utils.decode_range(ws['!ref']);
+assert.equal(range.e.r - range.s.r + 1, 13, `sheetjs rows: ${ws['!ref']}`);
+assert.equal(ws.S1.v, 'Block (20 msgs)', 'sheetjs header');
+assert.ok(Array.from({ length: 19 }, (_, c) => ws[XLSX.utils.encode_cell({ r: 1, c })]?.v)
+  .some((v) => typeof v === 'number'), 'sheetjs reads a numeric cell as a number');
+assert.equal(ws['!autofilter']?.ref, 'A1:S13', 'sheetjs autoFilter');
 
 console.log(`XLSX VALID: zip CRC ok, ${z.names.length} well-formed members, ${rows.length} rows, sheets=[${sheets}]`);
