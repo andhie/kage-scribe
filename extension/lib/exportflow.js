@@ -116,7 +116,12 @@
       let chat = byChat.get(id);
       if (!chat) {
         const meta = metas[id] || {};
-        chat = { title: meta.name || UNTITLED_CHAT, site: meta.site || '', plotSummary: meta.plotSummary || '', count: 0, items: [] };
+        chat = {
+          title: meta.name || UNTITLED_CHAT, site: meta.site || '', plotSummary: meta.plotSummary || '',
+          coverUrl: meta.coverUrl || '', coverThumbnailUrl: meta.coverThumbnailUrl || '',
+          coverWidth: meta.coverWidth || 0, coverHeight: meta.coverHeight || 0,
+          count: 0, items: []
+        };
         byChat.set(id, chat);
       }
       const isUser = m.role === 'user';

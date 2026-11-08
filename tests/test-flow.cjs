@@ -93,10 +93,16 @@ assert.strictEqual(msgs.length, 10, 'fixture loaded');
     mk('user', 'secret side talk', { type: 'ooc' }),
     mk('assistant', 'continued', { type: 'continue' })
   ];
-  const story = F.storyBlocks(list.slice().reverse(), { c1: { name: 'My Story', site: 'isekaizero', plotSummary: 'Plot.' } }); // newest first in
+  const story = F.storyBlocks(list.slice().reverse(), { c1: {
+    name: 'My Story', site: 'isekaizero', plotSummary: 'Plot.',
+    coverUrl: 'https://s3.alterworld.ai/full.webp', coverThumbnailUrl: 'https://s3.alterworld.ai/thumb.webp',
+    coverWidth: 480, coverHeight: 640
+  } }); // newest first in
   assert.strictEqual(story.chats.length, 1);
   const c = story.chats[0];
   assert.deepStrictEqual([c.title, c.site, c.plotSummary, c.count], ['My Story', 'isekaizero', 'Plot.', 7]);
+  assert.deepStrictEqual([c.coverUrl, c.coverThumbnailUrl, c.coverWidth, c.coverHeight],
+    ['https://s3.alterworld.ai/full.webp', 'https://s3.alterworld.ai/thumb.webp', 480, 640]);
   assert.deepStrictEqual(c.items.map((i) => i.text.slice(0, 5)), ['first', 'She *', 'secon', 'third', 'The s', '<x>Un', 'conti'], 'oldest first, OOC dropped');
   assert.deepStrictEqual(c.items.filter((i) => i.isUser).map((i) => i.name), ['Mira', 'Rin', 'You'], 'persona swap shown from that message on; empty name → You');
   assert.ok(c.items.filter((i) => !i.isUser).every((i) => i.name === null), 'AI items have no name');

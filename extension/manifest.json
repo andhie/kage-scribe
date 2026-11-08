@@ -10,7 +10,8 @@
     "https://kagesekai.ai/*",
     "https://*.kagesekai.ai/*",
     "https://isekaizero.ai/*",
-    "https://*.isekaizero.ai/*"
+    "https://*.isekaizero.ai/*",
+    "https://s3.alterworld.ai/*"
   ],
   "background": {
     "service_worker": "background.js"

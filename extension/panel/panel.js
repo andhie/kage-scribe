@@ -750,6 +750,34 @@ function closeModal() {
 
 /* ------------------------------------------------ export */
 
+/** Fetch a WebP cover and convert it to the PNG format Word handles reliably. */
+async function loadDocxCover(chat) {
+  for (const url of [chat.coverUrl, chat.coverThumbnailUrl]) {
+    if (!url) continue;
+    try {
+      const res = await fetch(url, { credentials: 'omit', cache: 'force-cache', referrerPolicy: 'no-referrer' });
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (!blob.size || blob.size > 12 * 1024 * 1024) continue;
+      const image = await createImageBitmap(blob);
+      if (!image.width || !image.height || image.width > 4096 || image.height > 4096) { image.close(); continue; }
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      image.close();
+      const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (png) return { data: new Uint8Array(await png.arrayBuffer()), width: canvas.width, height: canvas.height };
+    } catch (e) { /* try the thumbnail, then export without a cover */ }
+  }
+  return null;
+}
+
+async function loadDocxCovers(story) {
+  await Promise.all(story.chats.map(async (chat) => { chat.cover = await loadDocxCover(chat); }));
+  return story;
+}
+
 /** Download `msgs` (already filtered + ordered) as `fmt`. `opts.fileBase`
  *  names the file (DOCX may use `opts.docxBase`); `opts.jsonExtra` is merged
  *  into the JSON envelope. Returns { count, result }: the message count (0 when empty) and the
@@ -765,8 +793,9 @@ async function downloadMerged(msgs, fmt, opts) {
   if (fmt === 'docx') {
     // Storybook: title block per chat, persona names, scene headers, no OOC.
     // Colors come from the Advanced → Word style tab (Print look by default).
+    const story = await loadDocxCovers(KSFlow.storyBlocks(msgs, S.chats));
     result = await KSExport.download((o.docxBase || base) + '-' + stamp + '.docx', KSExport.DOCX_MIME,
-      KSExport.buildDOCX(KSFlow.storyBlocks(msgs, S.chats), KSFlow.resolveDocxColors(S.settings)));
+      KSExport.buildDOCX(story, KSFlow.resolveDocxColors(S.settings)));
   } else if (fmt === 'json') {
     const rows = msgs.map((m, i) => KSMerge.messageToRow(m, i + 1, blocks.get(m._id)));
     result = await KSExport.download(base + '-' + stamp + '.json', 'application/json',

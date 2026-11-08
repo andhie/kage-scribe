@@ -7,8 +7,8 @@
 // <w:t>, whitespace removed) must contain each expected text, in order. Also:
 // user turns start with a bold run ending in ":" (one per user message, plus the
 // hostile message the test adds), and every scene header paragraph is italic.
-// With --colored, the file is the every-role-colored build: 5 parts (a page tint
-// needs word/settings.xml + its relationship) and each role's run color checked.
+// With --colored, the file is the every-role-colored build: 6 parts (cover,
+// relationship and page-tint settings) and each role's run color checked.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readZip, parseXml, all, child } from './officezip.mjs';
@@ -18,12 +18,18 @@ const colored = process.argv.includes('--colored');
 
 const z = readZip(docxPath);
 const PARTS = colored
-  ? ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/_rels/document.xml.rels', 'word/settings.xml']
-  : ['[Content_Types].xml', '_rels/.rels', 'word/document.xml'];
+  ? ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/_rels/document.xml.rels', 'word/settings.xml', 'word/media/cover1.png']
+  : ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/_rels/document.xml.rels', 'word/media/cover1.png'];
 assert.deepEqual([...z.names].sort(), [...PARTS].sort(), `${z.names}`); // part order in a zip is irrelevant
-const trees = Object.fromEntries(z.names.map((n) => [n, parseXml(z.get(n).toString('utf8'))])); // CRC + well-formed
+const trees = Object.fromEntries(z.names.filter((n) => !n.endsWith('.png'))
+  .map((n) => [n, parseXml(z.get(n).toString('utf8'))])); // CRC + well-formed XML
 const doc = trees['word/document.xml'];
+assert.deepEqual([...z.get('word/media/cover1.png').subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], 'cover is PNG');
+const imageRels = all(trees['word/_rels/document.xml.rels'], 'Relationship').filter((r) => /\/image$/.test(r.attrs.Type || ''));
+assert.equal(imageRels.length, 1, 'one cover image relationship');
+assert.equal(imageRels[0].attrs.Target, 'media/cover1.png');
 const paras = child(doc, 'body').kids.filter((k) => k.name === 'p');
+assert.equal(all(doc, 'blip').length, 1, 'one cover drawing');
 assert.ok(paras.length, 'no paragraphs');
 
 // Same patterns as ITALIC_SRC / BOLD_SRC in extension/lib/exporter.js (\w is Unicode in the Python-era original).

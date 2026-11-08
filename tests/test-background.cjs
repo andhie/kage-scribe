@@ -692,7 +692,14 @@ const capture = (url, body, extra) => ({
       data: {
         _id: CHAT_ID,
         history: { _id: HISTORY_ID, name: 'A Dragon Boy Appeared in My Apartment?! - #1' },
-        storylineSnapshot: { title: 'Um Garoto Dragão Surgiu no Meu Apartamento?!' }
+        storylineSnapshot: {
+          title: 'Um Garoto Dragão Surgiu no Meu Apartamento?!',
+          cover: {
+            url: 'https://s3.alterworld.ai/uploads/story.webp',
+            thumbnailUrl: 'https://s3.alterworld.ai/uploads/thumbs/story.webp',
+            width: 480, height: 640
+          }
+        }
       }
     });
     const bg = loadBackground();
@@ -703,6 +710,9 @@ const capture = (url, body, extra) => ({
       'history.name preferred over storylineSnapshot.title');
     assert.strictEqual(st.chats[CHAT_ID].totalCount, sample.data.totalCount, 'name refresh keeps the tracked totals');
     assert.strictEqual(st.chats[CHAT_ID].site, 'kagesekai', 'chat meta records which site it came from');
+    assert.strictEqual(st.chats[CHAT_ID].coverUrl, 'https://s3.alterworld.ai/uploads/story.webp');
+    assert.strictEqual(st.chats[CHAT_ID].coverThumbnailUrl, 'https://s3.alterworld.ai/uploads/thumbs/story.webp');
+    assert.deepStrictEqual([st.chats[CHAT_ID].coverWidth, st.chats[CHAT_ID].coverHeight], [480, 640]);
     assert.ok(!st.chats[HISTORY_ID], 'stored under the chat id, never the history id');
 
     // storyline snapshot title alone still yields a label
@@ -710,6 +720,13 @@ const capture = (url, body, extra) => ({
       JSON.stringify({ data: { _id: 'nohist', storylineSnapshot: { title: 'Snapshot Title' } } })) });
     const st2 = await bg.state();
     assert.strictEqual(st2.chats.nohist.name, 'Snapshot Title');
+
+    await bg.send({ type: 'ks:capture', entry: capture('https://api.kagesekai.ai/api/chats/badcover',
+      JSON.stringify({ data: { _id: 'badcover', name: 'Bad cover', storylineSnapshot: { cover: {
+        url: 'http://s3.alterworld.ai/not-https.webp', thumbnailUrl: 'https://example.com/not-allowed.webp'
+      } } } })) });
+    const stBad = await bg.state();
+    assert.ok(!stBad.chats.badcover.coverUrl && !stBad.chats.badcover.coverThumbnailUrl, 'untrusted cover hosts are dropped');
 
     // chat-list capture on the sister site labels its chats isekaizero
     await bg.send({ type: 'ks:capture', entry: capture('https://api.isekaizero.ai/api/chats',

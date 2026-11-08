@@ -280,12 +280,31 @@
     return out;
   }
 
+  /** Centered inline PNG, scaled to fit a storybook cover page. */
+  function coverPara(relId, docId, width, height) {
+    const w = width > 0 ? width : 3;
+    const h = height > 0 ? height : 4;
+    const maxCx = 3657600; // 4 in
+    const maxCy = 4876800; // 5 1/3 in
+    const scale = Math.min(maxCx / w, maxCy / h);
+    const cx = Math.round(w * scale);
+    const cy = Math.round(h * scale);
+    return '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing>' +
+      '<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="' + cx + '" cy="' + cy + '"/>' +
+      '<wp:docPr id="' + docId + '" name="Story cover"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+      '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>' +
+      '<pic:nvPicPr><pic:cNvPr id="0" name="cover.png"/><pic:cNvPicPr/></pic:nvPicPr>' +
+      '<pic:blipFill><a:blip r:embed="' + relId + '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+      '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>' +
+      '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>' +
+      '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+  }
+
   /**
    * Storybook from KSFlow.storyBlocks(): per chat a title block (title, site,
-   * plot summary, message count), then the messages. Direct run formatting
-   * only, so the zip keeps its 3 parts — 5 when a page tint is set (it needs
-   * word/settings.xml + its relationship; Word shows a tint on screen, not in
-   * print). Chats after the first start on a new page. User turns: a ✦ break,
+   * plot summary, message count), then the messages. A supplied PNG cover is
+   * embedded as a media part; a page tint adds word/settings.xml. Word shows
+   * the tint on screen, not in print. Chats after the first start on a new page. User turns: a ✦ break,
    * then the bold persona name. A scene header is a small italic line.
    * `colors` (optional, from KSFlow.resolveDocxColors): narration, dialogue,
    * thoughts, bold, scene, persona, background — '' inherits; the defaults
@@ -299,10 +318,18 @@
     };
     const enc = new TextEncoder();
     const paragraphs = [];
+    const covers = [];
+    for (const chat of story.chats || []) {
+      if (chat.cover && chat.cover.data instanceof Uint8Array) {
+        covers.push({ chat, ...chat.cover, relId: 'rId' + ((c.background ? 2 : 1) + covers.length) });
+      }
+    }
     const date = timestamp().replace(/^(\d{4})(\d{2})(\d{2}).*$/, '$1-$2-$3');
     (story.chats || []).forEach((chat, ci) => {
       if (ci) paragraphs.push(pageBreak());
       paragraphs.push(para(run(chat.title, { b: true, sz: 36, color: c.narration }), true));
+      const cover = covers.find((x) => x.chat === chat);
+      if (cover) paragraphs.push(coverPara(cover.relId, ci + 1, cover.width, cover.height));
       if (chat.site) paragraphs.push(para(run('A story played on ' + chat.site + '.ai', { color: GREY }), true));
       if (chat.plotSummary) paragraphs.push(...textParas(chat.plotSummary, { color: c.narration }, null, c, false));
       paragraphs.push(para(run(chat.count + (chat.count === 1 ? ' message' : ' messages') + ' · exported ' + date, { sz: 18, color: GREY }), true));
@@ -314,7 +341,11 @@
       }
     });
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' +
+      'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' +
+      'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+      'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
       (c.background ? '<w:background w:color="' + c.background + '"/>' : '') +
       '<w:body>' + paragraphs.join('') +
       '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
@@ -324,6 +355,7 @@
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
       '<Default Extension="xml" ContentType="application/xml"/>' +
+      (covers.length ? '<Default Extension="png" ContentType="image/png"/>' : '') +
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
       (c.background ? '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>' : '') +
       '</Types>';
@@ -335,16 +367,18 @@
       { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
       { name: '_rels/.rels', data: enc.encode(rootRels) }
     ];
-    if (c.background) {
-      files.push(
-        { name: 'word/_rels/document.xml.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' +
-          '</Relationships>') },
-        { name: 'word/settings.xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-          '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:displayBackgroundShape/></w:settings>') }
-      );
+    if (c.background || covers.length) {
+      const rels = (c.background
+        ? '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>'
+        : '') + covers.map((x, i) => '<Relationship Id="' + x.relId + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover' + (i + 1) + '.png"/>').join('');
+      files.push({ name: 'word/_rels/document.xml.rels', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels + '</Relationships>') });
     }
+    if (c.background) {
+      files.push({ name: 'word/settings.xml', data: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+        '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:displayBackgroundShape/></w:settings>') });
+    }
+    covers.forEach((x, i) => files.push({ name: 'word/media/cover' + (i + 1) + '.png', data: x.data }));
     files.push({ name: 'word/document.xml', data: enc.encode(documentXml) });
     return buildZip(files);
   }

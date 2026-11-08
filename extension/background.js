@@ -376,6 +376,31 @@ function chatNameOf(c) {
     || s(c.storylineSnapshot && c.storylineSnapshot.title);
 }
 
+/** Only retain the small, known-safe slice of a storyline cover. */
+function coverMetaOf(c) {
+  const cover = c && c.storylineSnapshot && c.storylineSnapshot.cover;
+  if (!cover || typeof cover !== 'object') return {};
+  const imageUrl = (value) => {
+    if (typeof value !== 'string' || value.length > LIMITS.maxUrlChars) return '';
+    try {
+      const u = new URL(value);
+      return u.protocol === 'https:' && u.hostname.toLowerCase() === 's3.alterworld.ai' ? u.toString() : '';
+    } catch (e) { return ''; }
+  };
+  const url = imageUrl(cover.url);
+  const thumbnailUrl = imageUrl(cover.thumbnailUrl);
+  if (!url && !thumbnailUrl) return {};
+  const size = (value) => Number.isFinite(value) && value > 0 && value <= 10000 ? Math.round(value) : null;
+  const width = size(cover.width);
+  const height = size(cover.height);
+  return {
+    ...(url ? { coverUrl: url } : {}),
+    ...(thumbnailUrl ? { coverThumbnailUrl: thumbnailUrl } : {}),
+    ...(width ? { coverWidth: width } : {}),
+    ...(height ? { coverHeight: height } : {})
+  };
+}
+
 /** Which of the two supported sites an https URL belongs to ('' if neither).
  *  Also the gate for fetch-all: it replays captured auth headers only there. */
 function siteOf(url) {
@@ -419,6 +444,7 @@ function sniffChatMeta(st, entry) {
     const plotSummary = typeof ps === 'string' ? ps.trim().slice(0, LIMITS.maxPlotChars).trim() : '';
     st.chats[c._id] = {
       ...(st.chats[c._id] || {}), name, ...(site ? { site } : {}), ...(plotSummary ? { plotSummary } : {}),
+      ...coverMetaOf(c),
       ts: entry.ts || Date.now()
     };
   }
@@ -558,7 +584,7 @@ async function runFetchAll(base, pageSizeArg, st, status) {
     // A run doubles as "label this chat": if no name was ever captured (the
     // chat detail was never loaded), ask the chat-detail endpoint for it.
     // Best-effort — never fails the run.
-    await backfillChatName(base, headers, st, status.chatId);
+    await backfillChatMeta(base, headers, st, status.chatId);
   } catch (err) {
     status.error = String((err && err.message) || err);
   } finally {
@@ -572,9 +598,9 @@ async function runFetchAll(base, pageSizeArg, st, status) {
 
 /** GET /api/chats/{id} for a chat whose name was never captured: derived from
  *  the replayed messages URL by stripping the trailing /messages segment. */
-async function backfillChatName(base, headers, st, chatId) {
+async function backfillChatMeta(base, headers, st, chatId) {
   const meta = st.chats[chatId];
-  if (meta && meta.name) return;
+  if (meta && meta.name && meta.coverUrl) return;
   try {
     const u = new URL(base.url);
     if (!/\/messages\/?$/.test(u.pathname)) return;
@@ -586,7 +612,7 @@ async function backfillChatName(base, headers, st, chatId) {
     const c = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : null;
     const name = c ? chatNameOf(c) : '';
     if (name && String(c._id) === String(chatId)) {
-      st.chats[chatId] = { ...(st.chats[chatId] || {}), name, ts: Date.now() };
+      st.chats[chatId] = { ...(st.chats[chatId] || {}), name, ...coverMetaOf(c), ts: Date.now() };
       scheduleSave(st, ['chats']);
     }
   } catch (e) { /* name stays unknown — harmless */ }

@@ -60,7 +60,7 @@ list.
 
 | Format | What you get |
 |---|---|
-| **Word** (.docx) | A storybook to read, edit or save as PDF. Each chat starts with a title block (title, site, plot summary, message count). Your messages carry your persona name, scene headers (`Day … Time … Location`) become small italic lines, `*actions*` are italic, `**strong**` text is bold, spoken lines in quotes get their own color, and out-of-character (OOC) messages are left out. Several chats start on separate pages. Colors are yours to pick — see **Word style** below. |
+| **Word** (.docx) | A storybook to read, edit or save as PDF. Each chat starts with its story cover and a title block (title, site, plot summary, message count). Your messages carry your persona name, scene headers (`Day … Time … Location`) become small italic lines, `*actions*` are italic, `**strong**` text is bold, spoken lines in quotes get their own color, and out-of-character (OOC) messages are left out. Several chats start on separate pages. Colors are yours to pick — see **Word style** below. |
 | **Excel** (.xlsx) / **CSV** | One row per message: time, role, name, content, model, tokens, cost, IDs and a **Block (20 msgs)** column. Excel adds a filter row. |
 | **JSON** | All fields, for scripts. |
 

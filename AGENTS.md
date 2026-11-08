@@ -6,8 +6,11 @@ transcript per chat, and exports CSV / JSON / XLSX / DOCX (storybook).
 
 No build step, bundler or runtime dependency. MV3 forbids remote code, so the
 XLSX/DOCX writers are hand-rolled store-only ZIP generators in
-`extension/lib/exporter.js`. Version **1.0.0** is the baseline (no migrations);
-`extension/manifest.json` and `package.json` versions must match, bump both.
+`extension/lib/exporter.js`. Do not change version numbers for feature, fix,
+documentation or test work. Only bump versions as part of an actual release
+when the user explicitly asks for it; during that release, keep
+`extension/manifest.json`, `package.json` and the root package in
+`package-lock.json` in sync.
 
 `extension/` is the folder Chrome loads (runtime files only); `tests/`,
 `tools/`, `package.json`, `README.md` stay at the repo root. Source paths below
@@ -22,7 +25,7 @@ are relative to `extension/`.
 - The validators read `tests/out/messages.xlsx` / `transcript.docx` /
   `transcript-colored.docx`, written by `test-export.cjs`; if missing,
   `run-all.mjs` skips them. The colored file is validated with `--colored`
-  (5 parts, per-role run colors).
+  (6 parts with its cover, per-role run colors).
 - `npm run icons` — regenerate `extension/icons/*.png`.
 - `npm run screenshots` — retake `docs/screenshots/*.png` (headless Chrome, real
   panel/popup, made-up chats). Rerun after a visible panel/popup change. Never
@@ -107,10 +110,12 @@ content/bridge.js (ISOLATED)        - ks:* message router
     turns keep the persona color; all three patterns are shared with
     `validate_docx.mjs`. Colors come from `KSFlow.resolveDocxColors`
     (settings over the Print defaults, which `buildDOCX` also applies when
-    called bare — `test-export.cjs` pins them equal). Direct formatting only,
-    3 zip parts — 5 when a page tint is set (`word/settings.xml` with
-    `displayBackgroundShape` + its relationship; Word shows a tint on screen,
-    not in print).
+    called bare — `test-export.cjs` pins them equal). The story cover comes
+    from `storylineSnapshot.cover.url` (thumbnail fallback), is converted from
+    WebP to PNG only during export, and is never stored as image bytes. Direct
+    formatting only; a cover adds its media part and document relationship.
+    A page tint adds `word/settings.xml` with `displayBackgroundShape`; Word
+    shows the tint on screen, not in print.
   - `Block (20 msgs)` is the last column of CSV/Excel/JSON. `KSFlow.blockNumbers`
     runs on the whole store before any filter (per chat, oldest first, OOC
     skipped), so filters never move a number.

@@ -109,11 +109,15 @@ const storyMsg = ai('ai-1', '2099-01-01T00:00:02.000Z',
 const ooc = { ...usr('ooc-1', '2099-01-01T00:00:01.000Z', 'OOC-SECRET'), type: 'ooc' };
 const PLOT = 'A made-up plot summary & more.';
 const story = F.storyBlocks(msgs.concat([hostile, storyMsg, ooc]), { [CHAT_ID]: { name: 'Test <Story>', site: 'isekaizero', plotSummary: PLOT } });
+const COVER_PNG = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+AvcX9QAAAABJRU5ErkJggg==', 'base64'));
+story.chats[0].cover = { data: COVER_PNG, width: 480, height: 640 };
 const docx = E.buildDOCX(story);
 fs.writeFileSync(path.join(outDir, 'transcript.docx'), docx);
 assert.ok(docx[0] === 0x50 && docx[1] === 0x4b, 'docx zip magic');
 const dbuf = Buffer.from(docx);
 assert.ok(dbuf.includes(Buffer.from('word/document.xml')), 'document part present');
+assert.ok(dbuf.includes(Buffer.from('word/media/cover1.png')), 'cover image part present');
+assert.ok(dbuf.includes(Buffer.from('relationships/image')), 'cover image relationship present');
 const docXml = (buf) => {
   const b = Buffer.from(buf).toString('utf8');
   return b.slice(b.indexOf('<w:document'), b.indexOf('</w:document>'));
@@ -134,7 +138,7 @@ assert.ok(xml.includes('<w:i/>'), 'italic runs');
 assert.ok(xml.includes('<w:i/><w:color w:val="808080"/>'), 'italic runs grey by default');
 assert.strictEqual(docXml(docx), docXml(E.buildDOCX(story, F.DOCX_PRESETS.print.colors)),
   'no colors === the Print preset (defaults pinned)');
-assert.strictEqual((Buffer.from(docx).toString('latin1').match(/PK\x03\x04/g) || []).length, 3, 'still 3 zip parts');
+assert.strictEqual((Buffer.from(docx).toString('latin1').match(/PK\x03\x04/g) || []).length, 5, 'cover adds image + relationship parts');
 
 // shared patterns with tests/validate_docx.mjs: the cases the design names
 const italics = (line) => [...line.matchAll(new RegExp(E.ITALIC_SRC, 'g'))].map((m) => m[1]);
@@ -155,7 +159,7 @@ const COLORS = { narration: '2A2638', dialogue: 'B85C1E', thoughts: '8E8AA0', bo
 const colored = E.buildDOCX(story, COLORS);
 fs.writeFileSync(path.join(outDir, 'transcript-colored.docx'), colored);
 const cbuf = Buffer.from(colored);
-assert.strictEqual((cbuf.toString('latin1').match(/PK\x03\x04/g) || []).length, 5, 'page tint adds settings + rels (5 parts)');
+assert.strictEqual((cbuf.toString('latin1').match(/PK\x03\x04/g) || []).length, 6, 'cover + page tint add image, settings and relationships');
 assert.ok(cbuf.includes(Buffer.from('<w:background w:color="F7F5FA"/>')), 'page tint element');
 assert.ok(cbuf.includes(Buffer.from('<w:displayBackgroundShape/>')), 'Word told to show the tint');
 const cxml = docXml(colored);
@@ -175,6 +179,11 @@ assert.ok(/^T\|0 messages · exported /.test(noPlot), noPlot);
 // two chats: a page break between them, none before the first
 const two = docXml(E.buildDOCX({ chats: [1, 2].map((n) => ({ title: 'C' + n, site: '', plotSummary: '', count: 0, items: [] })) }));
 assert.strictEqual((two.match(/w:type="page"/g) || []).length, 1);
+const twoCovers = Buffer.from(E.buildDOCX({ chats: [1, 2].map((n) => ({
+  title: 'C' + n, site: '', plotSummary: '', count: 0, items: [], cover: { data: COVER_PNG, width: 3, height: 4 }
+})) }));
+assert.ok(twoCovers.includes(Buffer.from('word/media/cover1.png')) && twoCovers.includes(Buffer.from('word/media/cover2.png')), 'all-chat DOCX embeds every cover');
+assert.strictEqual((twoCovers.toString('utf8').match(/relationships\/image/g) || []).length, 2, 'each cover has its own relationship');
 // empty story: a valid document with an empty body
 const empty = E.buildDOCX({ chats: [] });
 assert.ok(!Buffer.from(empty).toString('utf8').includes('<w:t'), 'empty story has no text');
