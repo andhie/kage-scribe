@@ -31,9 +31,11 @@ are relative to `extension/`.
   panel/popup, made-up chats). Rerun after a visible panel/popup change. Never
   screenshot real data: the README is public.
 - `npm run release` — zips committed `HEAD:extension` to
-  `dist/kage-scribe-<version>.zip`. Never remove the manifest `key` once
-  shipped: it fixes the extension ID, and removing it resets every install's
-  storage.
+  `dist/kage-scribe-<version>.zip`. For an actual GitHub release, run
+  `npm test`, then `npm run release`, and upload that generated ZIP. Its root
+  must contain only the contents of `extension/`, never the repository or an
+  enclosing `extension/` folder. Never remove the manifest `key` once shipped:
+  it fixes the extension ID, and removing it resets every install's storage.
 - Not automated: panel/popup DOM. Check by loading `extension/` unpacked at
   `chrome://extensions`.
 
